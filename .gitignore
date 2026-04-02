@@ -1,0 +1,12 @@
+# OpenFOAM build files
+Make/*
+!Make/files
+!Make/options
+
+platforms/
+linux*Gcc*
+linux*Clang*
+
+*.dep
+*.o
+*.so
