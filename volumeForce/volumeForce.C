@@ -73,8 +73,8 @@ Foam::fv::volumeForce::volumeForce
 :
     fvModel(name, modelType, mesh, dict),
     FName_(word::null),
-    rho_("rho", dimDensity, dict)
-    fPtr_(nullptr),
+    rho_("rho", dimDensity, dict),
+    fPtr_(nullptr)
 
 {
     readCoeffs(coeffs(dict));
