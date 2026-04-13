@@ -22,17 +22,18 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fv::volumeForce
+    Foam::fv::volumeSources
 
 Description
-    Applies the volumetric force to the momentum equation.
+    Applies the volumetric force to the momentum equation and heat sources to heat equation.
 
 Usage
     Example usage:
     \verbatim
     volumeForce
     {
-        F           F;  // Name of the force field (needs to be present in case)
+        F           forceField;  // Name of the force field (needs to be present in case)
+        q           heatField;  // Name of the force field (needs to be present in case)
     }
     \endverbatim
 
@@ -41,8 +42,8 @@ SourceFiles
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef volumeForce_H
-#define volumeForce_H
+#ifndef volumeSources_H
+#define volumeSources_H
 
 #include "fvModel.H"
 #include "volFields.H"
@@ -56,10 +57,10 @@ namespace fv
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class volumeForce Declaration
+                        Class volumeSources Declaration
 \*---------------------------------------------------------------------------*/
 
-class volumeForce
+class volumeSources
 :
     public fvModel
 {
@@ -71,10 +72,13 @@ class volumeForce
         word UName_;
         //- Name of the force field
         word FName_;
+        //- Name of the heat field
+        word qName_;
 
         dimensionedScalar rho_;
 		
 		autoPtr<volVectorField> fPtr_;
+		autoPtr<volScalarField> qPtr_;
 
     // Private Member Functions
 
@@ -91,7 +95,7 @@ public:
     // Constructors
 
         //- Construct from explicit source name and mesh
-        volumeForce
+        volumeSources
         (
             const word& name,
             const word& modelType,
@@ -100,7 +104,7 @@ public:
         );
 
         //- Disallow default bitwise copy construction
-        volumeForce(const volumeForce&) = delete;
+        volumeSources(const volumeSources&) = delete;
 
 
     // Member Functions
@@ -120,6 +124,14 @@ public:
                 const volVectorField& U,
                 fvMatrix<vector>& eqn
             ) const;
+
+            virtual void addSup
+            (
+                const volScalarField& rho,
+                const volScalarField& he,
+                fvMatrix<scalar>& eqn
+            ) const;
+
 
             //- Add explicit contribution to compressible momentum equation
             virtual void addSup
@@ -163,7 +175,7 @@ public:
     // Member Operators
 
         //- Disallow default bitwise assignment
-        void operator=(const volumeForce&) = delete;
+        void operator=(const volumeSources&) = delete;
 };
 
 

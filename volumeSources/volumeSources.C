@@ -23,22 +23,22 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "volumeForce.H"
+#include "volumeSources.H"
 #include "fvMatrices.H"
 #include "addToRunTimeSelectionTable.H"
-
+#include "basicThermo.H"
 // * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * * //
 
 namespace Foam
 {
 namespace fv
 {
-    defineTypeNameAndDebug(volumeForce, 0);
+    defineTypeNameAndDebug(volumeSources, 0);
 
     addToRunTimeSelectionTable
     (
         fvModel,
-        volumeForce,
+        volumeSources,
         dictionary
     );
 }
@@ -47,7 +47,7 @@ namespace fv
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::fv::volumeForce::readCoeffs(const dictionary& dict)
+void Foam::fv::volumeSources::readCoeffs(const dictionary& dict)
 {
     phaseName_ = dict.lookupOrDefault<word>("phase", word::null);
 
@@ -58,12 +58,13 @@ void Foam::fv::volumeForce::readCoeffs(const dictionary& dict)
         IOobject::groupName("U", phaseName_)
     );
     FName_ = dict.lookupOrDefault<word>("F", word::null);
+    qName_ = dict.lookupOrDefault<word>("q", word::null);
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fv::volumeForce::volumeForce
+Foam::fv::volumeSources::volumeSources
 (
     const word& name,
     const word& modelType,
@@ -73,38 +74,72 @@ Foam::fv::volumeForce::volumeForce
 :
     fvModel(name, modelType, mesh, dict),
     FName_(word::null),
+    qName_(word::null),
     rho_("rho", dimDensity, dict),
-    fPtr_(nullptr)
+    fPtr_(nullptr),
+    qPtr_(nullptr)
 
 {
     readCoeffs(coeffs(dict));
-    fPtr_.reset
-    (
-        new volVectorField
+    if (FName_ != word::null)
+    {
+        fPtr_.reset
         (
-            IOobject
+            new volVectorField
             (
-                FName_,
-                mesh.time().constant(),
-                mesh,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh
-        )
-    );
+                IOobject
+                (
+                    FName_,
+                    mesh.time().constant(),
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh
+            )
+        );
+    }
+
+    if (qName_ != word::null)
+    {
+        qPtr_.reset
+        (
+            new volScalarField
+            (
+                IOobject
+                (
+                    qName_,
+                    mesh.time().constant(),
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh
+            )
+        );
+    }
+
 }
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::wordList Foam::fv::volumeForce::addSupFields() const
+Foam::wordList Foam::fv::volumeSources::addSupFields() const
 {
-    return wordList(1, UName_);
+    wordList fields;
+
+    if (fPtr_.valid()) fields.append(UName_);
+    if (qPtr_.valid())  {
+        const basicThermo& thermo =
+        mesh().lookupObject<basicThermo>(physicalProperties::typeName);
+        fields.append(thermo.he().name());
+
+    }   
+    return fields;
 }
 
 
-void Foam::fv::volumeForce::addSup
+void Foam::fv::volumeSources::addSup
 (
     const volVectorField& U,
     fvMatrix<vector>& eqn
@@ -113,8 +148,18 @@ void Foam::fv::volumeForce::addSup
     eqn += *fPtr_/rho_;
 }
 
+void Foam::fv::volumeSources::addSup
+(
+    const volScalarField& rho,
+    const volScalarField& he,
+    fvMatrix<scalar>& eqn
+) const
+{
+    eqn += *qPtr_;
+}
 
-void Foam::fv::volumeForce::addSup
+
+void Foam::fv::volumeSources::addSup
 (
     const volScalarField& rho,
     const volVectorField& U,
@@ -125,7 +170,7 @@ void Foam::fv::volumeForce::addSup
 }
 
 
-void Foam::fv::volumeForce::addSup
+void Foam::fv::volumeSources::addSup
 (
     const volScalarField& alpha,
     const volScalarField& rho,
@@ -137,25 +182,25 @@ void Foam::fv::volumeForce::addSup
 }
 
 
-bool Foam::fv::volumeForce::movePoints()
+bool Foam::fv::volumeSources::movePoints()
 {
     return true;
 }
 
 
-void Foam::fv::volumeForce::topoChange(const polyTopoChangeMap&)
+void Foam::fv::volumeSources::topoChange(const polyTopoChangeMap&)
 {}
 
 
-void Foam::fv::volumeForce::mapMesh(const polyMeshMap& map)
+void Foam::fv::volumeSources::mapMesh(const polyMeshMap& map)
 {}
 
 
-void Foam::fv::volumeForce::distribute(const polyDistributionMap&)
+void Foam::fv::volumeSources::distribute(const polyDistributionMap&)
 {}
 
 
-bool Foam::fv::volumeForce::read(const dictionary& dict)
+bool Foam::fv::volumeSources::read(const dictionary& dict)
 {
     if (fvModel::read(dict))
     {

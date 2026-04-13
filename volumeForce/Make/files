@@ -1,3 +1,0 @@
-volumeForce.C
-
-LIB = $(FOAM_USER_LIBBIN)/libVolumeForce
