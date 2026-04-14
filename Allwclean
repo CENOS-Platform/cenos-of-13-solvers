@@ -1,0 +1,16 @@
+#!/bin/bash
+cd ${0%/*} || exit 1
+
+source /opt/openfoam13/etc/bashrc
+
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Cleaning mapFieldsCSV"
+cd "$BASE_DIR/src/mapFieldsCSV"
+wclean
+
+echo "Cleaning volumeSources"
+cd "$BASE_DIR/src/volumeSources"
+wclean
+
+echo "Done"

@@ -1,3 +1,0 @@
-volumeSources.C
-
-LIB = $(FOAM_USER_LIBBIN)/libVolumeSources

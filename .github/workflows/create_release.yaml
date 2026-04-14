@@ -1,0 +1,49 @@
+name: Package OpenFOAM Solvers
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set variables
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          RELEASE_NAME="cenos-of-solvers-$TAG_NAME"
+          ARCHIVE_NAME="$RELEASE_NAME.tar.gz"
+
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+
+      - name: Create package folder
+        run: |
+          mkdir $RELEASE_NAME
+          cp -r src $RELEASE_NAME/ 2>/dev/null || true
+          cp -r nanoflann $RELEASE_NAME/ 2>/dev/null || true
+          cp Allwmake $RELEASE_NAME/ 2>/dev/null || true
+          cp Allwclean $RELEASE_NAME/ 2>/dev/null || true
+          cp README* $RELEASE_NAME/ 2>/dev/null || true
+
+      - name: Cleanup git files
+        run: |
+          find $RELEASE_NAME -name ".git*" -exec rm -rf {} + || true
+
+      - name: Create tarball
+        run: |
+          tar -czf $ARCHIVE_NAME $RELEASE_NAME
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.ARCHIVE_NAME }}

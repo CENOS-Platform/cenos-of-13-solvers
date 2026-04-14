@@ -1,0 +1,16 @@
+#!/bin/bash
+cd ${0%/*} || exit 1
+
+source /opt/openfoam13/etc/bashrc
+
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Building mapFieldsCSV"
+cd "$BASE_DIR/src/mapFieldsCSV"
+wmake
+
+echo "Building volumeSources"
+cd "$BASE_DIR/src/volumeSources"
+wmake libso
+
+echo "Done"
