@@ -9,6 +9,10 @@ echo "Building mapFieldsCSV"
 cd "$BASE_DIR/src/mapFieldsCSV"
 wmake
 
+echo "Building cenosOFSolverData"
+cd "$BASE_DIR/src/cenosOFSolverData"
+wmake
+
 echo "Building volumeSources"
 cd "$BASE_DIR/src/volumeSources"
 wmake libso
