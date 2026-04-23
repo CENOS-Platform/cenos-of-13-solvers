@@ -89,7 +89,7 @@ class volumeSources
 public:
 
     //- Runtime type information
-    TypeName("volumeForce");
+    TypeName("volumeSources");
 
 
     // Constructors

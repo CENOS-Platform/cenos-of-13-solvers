@@ -1,0 +1,1 @@
+WM_CFLAGS = -Wall -Wextra -Wshadow -Wconversion -O0

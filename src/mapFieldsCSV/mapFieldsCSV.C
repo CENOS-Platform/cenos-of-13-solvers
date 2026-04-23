@@ -103,16 +103,15 @@ int main(int argc, char *argv[])
         FieldData field;
 
         field.name = iter().keyword();
-        std::cout << field.name << "NAME" << std::endl;
+        std::cout << field.name << std::endl;
 
         const dictionary& fDict = fieldsDict.subDict(field.name);
-        Info <<  "BAA " << fDict << endl;
+        Info << fDict << endl;
 
         word type(fDict.lookup("type"));
         field.fieldName = fDict.lookupOrDefault<word>("fieldName", field.name);
 
         field.dims.reset(fDict.lookup<dimensionSet>("dimensions"));
-        Info << "UU " << field.dims << endl;
         if(type == "scalar")
         {
             field.isVector = false;
@@ -125,10 +124,8 @@ int main(int argc, char *argv[])
             for(label i=0;i<3;i++)
                 field.vectorColumns[i] = cols[i];
         }
-        std::cout << "Got this far " << std::endl;
 
         cloud.fields.push_back(field);
-        std::cout << "Got this far 2 " << std::endl;
 
     }
 
@@ -137,7 +134,6 @@ int main(int argc, char *argv[])
 
     std::ifstream in(csvFile);
     std::string line;
-
     while(std::getline(in,line))
     {
         if(line.empty() || line[0]=='#') continue;
@@ -262,75 +258,104 @@ int main(int argc, char *argv[])
 
 
     forAll(mesh.C(), cellI)
+{
+    vector pt = mesh.C()[cellI];
+
+    double query[3] = {pt.x(),pt.y(),pt.z()};
+
+    nanoflann::KNNResultSet<double> resultSet(K);
+    resultSet.init(idx.data(),dist2.data());
+
+    tree.findNeighbors
+    (
+        resultSet,
+        query,
+        nanoflann::SearchParameters(10)
+    );
+
+    label sId = 0;
+    label vId = 0;
+
+    for(auto& f : cloud.fields)
     {
-        vector pt = mesh.C()[cellI];
+        scalar sumW = 0;
 
-        double query[3] = {pt.x(),pt.y(),pt.z()};
+        vector sumV(0,0,0);
+        scalar sumS = 0;
 
-        nanoflann::KNNResultSet<double> resultSet(K);
-        resultSet.init(idx.data(),dist2.data());
+        // for deviation check
+        scalar minVal = GREAT;
+        scalar maxVal = -GREAT;
 
-        tree.findNeighbors
-        (
-            resultSet,
-            query,
-            nanoflann::SearchParameters(10)
-        );
-
-
-        label sId = 0;
-        label vId = 0;
-
-
-        for(auto& f : cloud.fields)
+        for(size_t i=0;i<resultSet.size();i++)
         {
-            scalar sumW = 0;
+            scalar d = std::sqrt(dist2[i]) + SMALL;
+            scalar w = 1.0/std::pow(d,power);
 
-            vector sumV(0,0,0);
-            scalar sumS = 0;
-
-
-            for(size_t i=0;i<resultSet.size();i++)
-            {
-                scalar d =
-                    std::sqrt(dist2[i]) + SMALL;
-
-                scalar w =
-                    1.0/std::pow(d,power);
-
-                sumW += w;
-
-                if(f.isVector)
-                {
-                    sumV +=
-                        w *
-                        f.vectorValues[idx[i]];
-                }
-                else
-                {
-                    sumS +=
-                        w *
-                        f.scalarValues[idx[i]];
-                }
-            }
-
+            sumW += w;
 
             if(f.isVector)
             {
-                (*vectorFields[vId])[cellI] =
-                    sumV/sumW;
+                const vector& v = f.vectorValues[idx[i]];
+                sumV += w * v;
 
-                vId++;
+                scalar magV = mag(v);
+                minVal = std::min(minVal, magV);
+                maxVal = std::max(maxVal, magV);
+            }
+            else
+            {
+                scalar v = f.scalarValues[idx[i]];
+                sumS += w * v;
+
+                minVal = std::min(minVal, v);
+                maxVal = std::max(maxVal, v);
+            }
+        }
+
+        scalar deviation = 0.0;
+        if(f.isVector)
+        {
+            vector interp = sumV / (sumW + SMALL);
+            scalar meanMag = mag(interp);
+
+            if(meanMag > SMALL)
+                deviation = (maxVal - minVal) / meanMag;
+
+            if(sumW > SMALL && deviation < 0.4)
+            {
+                (*vectorFields[vId])[cellI] = interp;
+            }
+            else
+            {
+                // fallback = nearest neighbor
+                (*vectorFields[vId])[cellI] =
+                    f.vectorValues[idx[0]];
+            }
+
+            vId++;
+        }
+        else
+        {
+            scalar interp = sumS / (sumW + SMALL);
+
+            if(std::abs(interp) > SMALL)
+                deviation = (maxVal - minVal) / std::abs(interp);
+
+            if(sumW > SMALL && deviation < 0.4)
+            {
+                (*scalarFields[sId])[cellI] = interp;
             }
             else
             {
                 (*scalarFields[sId])[cellI] =
-                    sumS/sumW;
-
-                sId++;
+                    f.scalarValues[idx[0]];
             }
+
+            sId++;
         }
     }
+}
 
 
     Info<<"Writing fields"<<endl;
