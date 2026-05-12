@@ -61,21 +61,31 @@ KDTreeSingleIndexAdaptor<
 
 int main(int argc, char *argv[])
 {
+    argList::addOption
+    (
+        "region",
+        "name",
+        "Specify mesh region"
+    );
 
     argList args(argc, argv);
 
+
+
     #include "createTime.H"
-    #include "createMesh.H"
+    #include "createRegionMeshNoChangers.H"
 
 
     Info<<"Reading dictionary\n"<<endl;
+    word sysDir(runTime.system());
+    word constDir(runTime.time().constant());
 
     IOdictionary dict
     (
         IOobject
         (
             "mapFieldsCSVDict",
-            runTime.system(),
+            sysDir,
             mesh,
             IOobject::MUST_READ,
             IOobject::NO_WRITE
@@ -206,7 +216,7 @@ int main(int argc, char *argv[])
                         IOobject
                         (
                             f.fieldName,
-                            runTime.time().constant(),
+                            constDir,
                             mesh,
                             IOobject::NO_READ,
                             IOobject::AUTO_WRITE
@@ -234,7 +244,7 @@ int main(int argc, char *argv[])
                         IOobject
                         (
                             f.fieldName,
-                            runTime.time().constant(),
+                            constDir,
                             mesh,
                             IOobject::NO_READ,
                             IOobject::AUTO_WRITE
